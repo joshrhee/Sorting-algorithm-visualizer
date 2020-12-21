@@ -1,6 +1,12 @@
+//There will be ... infront of 'lodash' if Typescript could not figure out the lodash library. Then, do the below at the terminal
+//command: yarn add @types/lodash
+import { range, shuffle } from 'lodash'
+
+const getArr = () => shuffle(range(1, 11))
+
 export default () => {
 
-    const arr = [1, 2, 3, 4, 5, 6, 7, 8 ,9, 10]
+    const arr = getArr()
     
     return (
         <div>
