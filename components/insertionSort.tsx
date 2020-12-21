@@ -1,9 +1,10 @@
 //There will be ... in-front-of 'lodash' if Typescript could not figure out the lodash library. Then, do the below at the terminal
 //command: yarn add @types/lodash
-import { range, shuffle, sortBy } from 'lodash'
-import { useState } from 'react'
+import { range, shuffle, sortBy, values } from 'lodash'
+import { FC, useState } from 'react'
 
-const getArr = () => shuffle(range(1, 11))
+const SIZE = 30
+const getArr = () => shuffle(range(1, SIZE + 1))
 
 const sort = (arr: number[]) => {
     let i = 1
@@ -19,7 +20,30 @@ const sort = (arr: number[]) => {
     }
 }
 
-export default () => {
+interface IpropsBar {
+    value: number
+    idx: number
+}
+
+//Bar is FunctionComponenet type with generics IpropsBar interface
+const Bar: FC<IpropsBar> = (props) => {
+    const { value, idx } = props
+    const style = {height: value * 10, transform: `translateX(${idx * 11}px)`}
+    return (
+        <>
+            <div style={style} className='bar'>{value}</div>
+            <style jsx> {`
+                .bar {
+                    position: absolute;
+                    widht: 20px;
+                    background-color: black;
+                }
+            `}</style>
+        </>
+    )
+}
+
+const Named = () => {
 
     const [arr, setArr] = useState(getArr())
 
@@ -41,9 +65,11 @@ export default () => {
     return (
         <div>
             <div className='board'>
-                {arr.join(',')}
-            </div>
+                
+                {arr.map((value, i) => <Bar key={i} value={value} idx={i}/>)}
 
+            </div>
+ 
             <div className='buttonBox'>
                 <button onClick={handleShuffle}>shuffle</button>
                 <button onClick={handleSort}>sort</button>
@@ -56,7 +82,7 @@ export default () => {
                     height: 200px;
                     background-color: green;
                     color: white;
-                    font-size: 40px;
+                    transform: rotateX(180deg);
                 }
                 .buttonBox {
                     width: 100%;
@@ -67,9 +93,11 @@ export default () => {
                 button {
                     font-size: 40px;
                 }
+                
             `}
             </style>
-            InsertionSort    
         </div>
     )
 }
+
+export default Named
