@@ -1,9 +1,23 @@
 //There will be ... in-front-of 'lodash' if Typescript could not figure out the lodash library. Then, do the below at the terminal
 //command: yarn add @types/lodash
-import { range, shuffle } from 'lodash'
+import { range, shuffle, sortBy } from 'lodash'
 import { useState } from 'react'
 
 const getArr = () => shuffle(range(1, 11))
+
+const sort = (arr: number[]) => {
+    let i = 1
+    while (i < arr.length) {
+        let j = i
+        while (j > 0 && arr[j - 1] > arr[j]) {
+            let temp = arr[j]
+            arr[j] = arr[j - 1]
+            arr[j - 1] = temp
+            j = j - 1
+        }
+        i = i + 1
+    }
+}
 
 export default () => {
 
@@ -11,6 +25,17 @@ export default () => {
 
     const handleShuffle = () => {
         setArr(getArr)
+    }
+
+    const handleSort = () => {
+        //Mutable way will change the state, but not come out change result into the web because even though the data is changed, the arr's address is same
+        //setArr() will not render if the arr has the same address when it first rendered.
+        //So we did Immutable way, like declaring a new array and copying the same data
+        //Then setArr() will render the new arr because the new arr has a different address
+        //React will understand current object's reference and new object's reference will not same, so render to the web.
+        const sortedArr = [...arr]
+        sort(sortedArr)
+        setArr(sortedArr)
     }
     
     return (
@@ -21,7 +46,7 @@ export default () => {
 
             <div className='buttonBox'>
                 <button onClick={handleShuffle}>shuffle</button>
-                <button>sort</button>
+                <button onClick={handleSort}>sort</button>
             </div>
             
 
