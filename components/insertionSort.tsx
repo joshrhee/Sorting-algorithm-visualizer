@@ -2,7 +2,7 @@
 //command: yarn add @types/lodash
 import { range, shuffle, sortBy, values } from 'lodash'
 import { resolve } from 'path'
-import { Dispatch, FC, SetStateAction, useState, memo } from 'react'
+import { Dispatch, FC, SetStateAction, useState, memo, MutableRefObject, useEffect, useRef } from 'react'
 
 const DURATION = 20 //duration is  millisecond
 const SIZE = 10
@@ -10,11 +10,12 @@ const BAR_WIDTH = 20
 const BAR_MARGIN = 2
 
 const getArr = () => shuffle(range(1, SIZE + 1))
+const initArr = range(1, SIZE + 1).map(() => 1)
 const getX = (idx: number) => idx * (BAR_MARGIN + BAR_WIDTH)
 
 
 
-const swap = (arr: number[], a: number, b: number) => {
+const swap = (arr: IExtendedBar[], a: number, b: number) => {
     let temp = arr[a]
     arr[a] = arr[b]
     arr[b] = temp
@@ -23,20 +24,30 @@ const swap = (arr: number[], a: number, b: number) => {
 type TSetArr = Dispatch<SetStateAction<Number[]>>
 type TSetIdx = Dispatch<SetStateAction<Number>>
 type TSet = Dispatch<SetStateAction<any>>
+type TSetX = Dispatch<SetStateAction<number>>
 
-const delaySet = (value: any, set: TSet) => new Promise((resolve) => {
+const delaySet = (value: number, set: TSet) => new Promise((resolve) => {
     set(value)  //declaring a new array and cloning the arr's data (...arr) to render setArr
     setTimeout(resolve, DURATION)
 })
 
-const sort = async (arr: number[], setArr: TSetArr, setIdxI: TSetIdx, setIdxJ: TSetIdx) => {
+interface IExtendedBar {
+    value: number
+    refSetX: MutableRefObject<TSetX>
+  }
+
+const sort = async (extendedBarArr: IExtendedBar[], setArr: TSetArr, setIdxI: TSetIdx, setIdxJ: TSetIdx) => {
     let i = 1
-    while (i < arr.length) {
+    while (i < extendedBarArr.length) {
         let j = i
         await delaySet(j, setIdxJ)
-        while (j > 0 && arr[j - 1] > arr[j]) {
-            swap(arr, j, j - 1)
-            await delaySet([...arr], setArr)
+        while (j > 0 && extendedBarArr[j - 1].value > extendedBarArr[j].value) {
+            await Promise.all([
+              delaySet(getX(j-1), extendedBarArr[j].refSetX.current),
+              delaySet(getX(j), extendedBarArr[j-1].refSetX.current),
+            ])
+            swap(extendedBarArr, j, j - 1)
+
             j = j - 1
             await delaySet(j, setIdxJ)
         }
@@ -50,12 +61,15 @@ const sort = async (arr: number[], setArr: TSetArr, setIdxI: TSetIdx, setIdxJ: T
 interface IpropsBar {
     value: number
     idx: number
+    refSetX: MutableRefObject<TSetX>
 }
 
 //Bar is FunctionComponenet type with generics IpropsBar interface
 const Bar: FC<IpropsBar> = (props) => {
-    const { value, idx } = props
-    const style = {height: value * 10, transform: `translateX(${getX(idx)}px)`}
+    const { value, idx, refSetX } = props
+    const [x, setX] = useState(getX(idx))
+    const style = { height: value * 10, transform: `translateX(${x}px)` }
+    refSetX.current = setX
     return (
         <>
             <div style={style} className='bar'>!!</div>
@@ -70,12 +84,9 @@ const Bar: FC<IpropsBar> = (props) => {
     )
 }
 
-interface IpropsBar {
-    arr: number[]
-}
-
 interface IpropsBoard {
     arr: number[]
+    refExtendedBarArr: MutableRefObject<IExtendedBar[]>
 }
 
 //Use when arr is changed. We don't have to render if arr is not changed.
@@ -86,13 +97,17 @@ const areEqualArr = (oldProps: IpropsBoard, props: IpropsBoard) => {
     return oldProps.arr === props.arr 
 }
 
-const Board: FC<IpropsBar> = (props) => {
-    const { arr } = props
+const Board: FC<IpropsBoard> = (props) => {
+    const { arr, refExtendedBarArr } = props
+    const extendedBarArr = arr.map(value => ({ value, refSetX: useRef<TSetX>(null) }))
+    useEffect(() => {
+        refExtendedBarArr.current = extendedBarArr
+    }, [arr])
     return (
         <div className='board'>
-            {arr.map((value, i) => {
+            {extendedBarArr.map((item, i) => {
                 console.log('render Bar')
-                return <Bar key={i} value={value} idx={i}/>
+                return <Bar key={i} value={item.value} idx={i} refSetX={item.refSetX}/>
             })}
             <style jsx> {`
                 .board {
@@ -113,10 +128,12 @@ const MemorizedBoard = memo(Board, areEqualArr)
 
 const Named = () => {
 
-    const [arr, setArr] = useState(getArr())
+    const [arr, setArr] = useState(initArr)
     const [idxI, setIdxI] = useState(1)
     const [idxJ, setIdxJ] = useState(1)
     const [isRunning, setIsRunning] = useState(false)
+    const refExtendedBarArr = useRef<IExtendedBar[]>([])
+    useEffect(() => setArr(getArr()), [])
 
     const handleShuffle = () => {
         setArr(getArr)
@@ -131,13 +148,13 @@ const Named = () => {
         //Then setArr() will render the new arr because the new arr has a different address
         //React will understand current object's reference and new object's reference will not same, so render to the web.
         setIsRunning(true) //Like the buttonBox div, we will make to visualize if isRunning is false
-        await sort(arr, setArr, setIdxI, setIdxJ)
+        await sort(refExtendedBarArr.current, setArr, setIdxI, setIdxJ)
         setIsRunning(false) //Like the buttonBox div, when setIsRunning becomes false, shuffle, sort button will be re appeared.
     }
     
     return (
         <div>
-            <MemorizedBoard arr={arr}/>
+            <MemorizedBoard arr={arr} refExtendedBarArr={refExtendedBarArr}/>
             <div className='index i' style={{ transform: `translateX(${getX(idxI)}px)` }}>i</div>
             <div className='index j' style={{ transform: `translateX(${getX(idxJ)}px)` }}>i</div>
             
