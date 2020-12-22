@@ -1,11 +1,14 @@
 //There will be ... in-front-of 'lodash' if Typescript could not figure out the lodash library. Then, do the below at the terminal
 //command: yarn add @types/lodash
-import { range, shuffle, sortBy, values } from 'lodash'
+import { range, shuffle, sortBy, values, uniqueId } from 'lodash'
 import { resolve } from 'path'
 import { Dispatch, FC, SetStateAction, useState, memo, MutableRefObject, useEffect, useRef } from 'react'
+//Animation Library
+//command: yarn add tweening-js
+import { tween } from 'tweening-js'
 
-const DURATION = 20 //duration is  millisecond
-const SIZE = 10
+const DURATION = 10 //duration is  millisecond
+const SIZE = 5
 const BAR_WIDTH = 20
 const BAR_MARGIN = 2
 
@@ -21,38 +24,34 @@ const swap = (arr: IExtendedBar[], a: number, b: number) => {
     arr[b] = temp
 }
 
-type TSetArr = Dispatch<SetStateAction<Number[]>>
 type TSetIdx = Dispatch<SetStateAction<Number>>
-type TSet = Dispatch<SetStateAction<any>>
 type TSetX = Dispatch<SetStateAction<number>>
 
-const delaySet = (value: number, set: TSet) => new Promise((resolve) => {
-    set(value)  //declaring a new array and cloning the arr's data (...arr) to render setArr
-    setTimeout(resolve, DURATION)
-})
+
 
 interface IExtendedBar {
     value: number
     refSetX: MutableRefObject<TSetX>
   }
 
-const sort = async (extendedBarArr: IExtendedBar[], setArr: TSetArr, setIdxI: TSetIdx, setIdxJ: TSetIdx) => {
-    let i = 1
+const sort = async (extendedBarArr: IExtendedBar[], setIdxI: TSetIdx, setIdxJ: TSetIdx) => {
+    let i = 1, j = 1
     while (i < extendedBarArr.length) {
-        let j = i
-        await delaySet(j, setIdxJ)
+        await tween(j, i, setIdxJ, DURATION).promise()
+        j = i
         while (j > 0 && extendedBarArr[j - 1].value > extendedBarArr[j].value) {
             await Promise.all([
-              delaySet(getX(j-1), extendedBarArr[j].refSetX.current),
-              delaySet(getX(j), extendedBarArr[j-1].refSetX.current),
+                tween(getX(j), getX(j-1), extendedBarArr[j].refSetX.current, DURATION).promise(),
+                tween(getX(j - 1), getX(j), extendedBarArr[j-1].refSetX.current, DURATION).promise(),
             ])
             swap(extendedBarArr, j, j - 1)
 
+            await tween(j, j - 1, setIdxJ, DURATION).promise()
             j = j - 1
-            await delaySet(j, setIdxJ)
+            
         }
+        await tween(i, i + 1, setIdxI, DURATION).promise()
         i = i + 1 
-        await delaySet(i, setIdxI)
     }
 }
 
@@ -91,7 +90,10 @@ interface IpropsBoard {
 
 //Use when arr is changed. We don't have to render if arr is not changed.
 //If we click buttons except shuffle, sort, we don't have to render.
-const areEqualArr = (oldProps: IpropsBoard, props: IpropsBoard) => {
+const isEqualArr = (oldProps: IpropsBoard, props: IpropsBoard) => {
+    if (oldProps.arr !== props.arr) {
+        console.log(props.arr.join(','))
+    }
     //check old props and current props are equal or not
     //Render if below result is false
     return oldProps.arr === props.arr 
@@ -103,11 +105,13 @@ const Board: FC<IpropsBoard> = (props) => {
     useEffect(() => {
         refExtendedBarArr.current = extendedBarArr
     }, [arr])
+
     return (
         <div className='board'>
             {extendedBarArr.map((item, i) => {
-                console.log('render Bar')
-                return <Bar key={i} value={item.value} idx={i} refSetX={item.refSetX}/>
+                //uniqueId is just to make sure match right array number with bar
+                //If I did not do that, sometimes bug happended
+                return <Bar key={ `${uniqueId(`set`)}: ${i}` } value={item.value} idx={i} refSetX={item.refSetX}/>
             })}
             <style jsx> {`
                 .board {
@@ -124,7 +128,7 @@ const Board: FC<IpropsBoard> = (props) => {
     )
 }
 
-const MemorizedBoard = memo(Board, areEqualArr)
+const MemorizedBoard = memo(Board, isEqualArr)
 
 const Named = () => {
 
@@ -148,7 +152,7 @@ const Named = () => {
         //Then setArr() will render the new arr because the new arr has a different address
         //React will understand current object's reference and new object's reference will not same, so render to the web.
         setIsRunning(true) //Like the buttonBox div, we will make to visualize if isRunning is false
-        await sort(refExtendedBarArr.current, setArr, setIdxI, setIdxJ)
+        await sort(refExtendedBarArr.current, setIdxI, setIdxJ)
         setIsRunning(false) //Like the buttonBox div, when setIsRunning becomes false, shuffle, sort button will be re appeared.
     }
     
@@ -162,7 +166,7 @@ const Named = () => {
             <div className='buttonBox'>
                 { !isRunning && <button onClick={handleShuffle}>shuffle</button> }
                 { !isRunning && <button onClick={handleSort}>sort</button> }
-                { isRunning && <div className='running'>Running...</div> }
+                { isRunning && <div className='running'>Sorting!!!</div> }
             </div>
             
 
