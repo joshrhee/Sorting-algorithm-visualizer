@@ -2,7 +2,7 @@
 //command: yarn add @types/lodash
 import { range, shuffle, sortBy, values } from 'lodash'
 import { resolve } from 'path'
-import { Dispatch, FC, SetStateAction, useState } from 'react'
+import { Dispatch, FC, SetStateAction, useState, memo } from 'react'
 
 const DURATION = 20 //duration is  millisecond
 const SIZE = 10
@@ -24,8 +24,8 @@ type TSetArr = Dispatch<SetStateAction<Number[]>>
 type TSetIdx = Dispatch<SetStateAction<Number>>
 type TSet = Dispatch<SetStateAction<any>>
 
-const delaySet = (value: any, setArr: TSet) => new Promise((resolve) => {
-    setArr(value)  //declaring a new array and cloning the arr's data (...arr) to render setArr
+const delaySet = (value: any, set: TSet) => new Promise((resolve) => {
+    set(value)  //declaring a new array and cloning the arr's data (...arr) to render setArr
     setTimeout(resolve, DURATION)
 })
 
@@ -70,6 +70,47 @@ const Bar: FC<IpropsBar> = (props) => {
     )
 }
 
+interface IpropsBar {
+    arr: number[]
+}
+
+interface IpropsBoard {
+    arr: number[]
+}
+
+//Use when arr is changed. We don't have to render if arr is not changed.
+//If we click buttons except shuffle, sort, we don't have to render.
+const areEqualArr = (oldProps: IpropsBoard, props: IpropsBoard) => {
+    //check old props and current props are equal or not
+    //Render if below result is false
+    return oldProps.arr === props.arr 
+}
+
+const Board: FC<IpropsBar> = (props) => {
+    const { arr } = props
+    return (
+        <div className='board'>
+            {arr.map((value, i) => {
+                console.log('render Bar')
+                return <Bar key={i} value={value} idx={i}/>
+            })}
+            <style jsx> {`
+                .board {
+                    width: 100%;
+                    height: 200px;
+                    background-color: green;
+                    color: white;
+                    transform: rotateX(180deg);
+                }
+            `}
+
+            </style>
+        </div>
+    )
+}
+
+const MemorizedBoard = memo(Board, areEqualArr)
+
 const Named = () => {
 
     const [arr, setArr] = useState(getArr())
@@ -96,12 +137,7 @@ const Named = () => {
     
     return (
         <div>
-            <div className='board'>
-                
-                {arr.map((value, i) => <Bar key={i} value={value} idx={i}/>)}
-
-            </div>
-
+            <MemorizedBoard arr={arr}/>
             <div className='index i' style={{ transform: `translateX(${getX(idxI)}px)` }}>i</div>
             <div className='index j' style={{ transform: `translateX(${getX(idxJ)}px)` }}>i</div>
             
