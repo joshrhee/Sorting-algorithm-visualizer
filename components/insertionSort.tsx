@@ -1,14 +1,17 @@
 //There will be ... in-front-of 'lodash' if Typescript could not figure out the lodash library. Then, do the below at the terminal
-//command: yarn add @types/lodash
+//command: yarn add @types/lodash  "@types/"" means lodash for typescript version
 import { range, shuffle, sortBy, values, uniqueId } from 'lodash'
 import { resolve } from 'path'
 import { Dispatch, FC, SetStateAction, useState, memo, MutableRefObject, useEffect, useRef } from 'react'
 //Animation Library
 //command: yarn add tweening-js
 import { tween } from 'tweening-js'
+//Sound Library
+//command: yarn add browser-beep
+import browserBeep from 'browser-beep'
 
-const DURATION = 10 //duration is  millisecond
-const SIZE = 5
+const DURATION = 60 //duration is  millisecond
+const SIZE = 30
 const BAR_WIDTH = 20
 const BAR_MARGIN = 2
 
@@ -35,11 +38,15 @@ interface IExtendedBar {
   }
 
 const sort = async (extendedBarArr: IExtendedBar[], setIdxI: TSetIdx, setIdxJ: TSetIdx) => {
+    const beepA = browserBeep({ frequency: 830 })  
+    const beepB = browserBeep({ frequency: 230 })
+
     let i = 1, j = 1
     while (i < extendedBarArr.length) {
         await tween(j, i, setIdxJ, DURATION).promise()
         j = i
         while (j > 0 && extendedBarArr[j - 1].value > extendedBarArr[j].value) {
+            beepA(1)
             await Promise.all([
                 tween(getX(j), getX(j-1), extendedBarArr[j].refSetX.current, DURATION).promise(),
                 tween(getX(j - 1), getX(j), extendedBarArr[j-1].refSetX.current, DURATION).promise(),
@@ -50,6 +57,7 @@ const sort = async (extendedBarArr: IExtendedBar[], setIdxI: TSetIdx, setIdxJ: T
             j = j - 1
             
         }
+        beepB(1)
         await tween(i, i + 1, setIdxI, DURATION).promise()
         i = i + 1 
     }
